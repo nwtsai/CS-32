@@ -10,9 +10,7 @@ Actor::Actor(int id, int x, int y, Direction dir, double size, unsigned int dept
 {}
 
 Actor::~Actor()
-{
-	setVisible(false);
-}
+{}
 
 bool Actor::isStillAlive()
 {
@@ -30,7 +28,8 @@ bool Actor::doesThisBlock()
 	return false;
 }
 
-int Actor::isProtester() // returns 0 if not protester, 1 if regular protester, 2 if hardcore protester
+// returns 0 if not protester, 1 if regular protester, 2 if hardcore protester
+int Actor::isProtester() 
 {
 	return 0;
 }
@@ -76,6 +75,7 @@ void LivingActor::reduceHP(int num)
 {
 	m_hp = m_hp - num;
 }
+
 // OBJECT IMPLEMENTATION //
 
 Object::Object(int id, int x, int y, Direction dir, double size, unsigned int depth, StudentWorld* world, FrackMan* fracker)
@@ -148,7 +148,7 @@ void FrackMan::doSomething()
 		case KEY_PRESS_LEFT:
 			if (getDirection() != left)
 				setDirection(left);
-			else if (getWorld()->canMoveHere(getX() - 1, getY()) == false)
+			else if (getWorld()->canFrackmanMoveHere(getX() - 1, getY()) == false)
 				break;
 			else if (getX() - 1 >= 0)
 				moveTo(getX() - 1, getY());
@@ -158,7 +158,7 @@ void FrackMan::doSomething()
 		case KEY_PRESS_RIGHT:
 			if (getDirection() != right)
 				setDirection(right);
-			else if (getWorld()->canMoveHere(getX() + 1, getY()) == false)
+			else if (getWorld()->canFrackmanMoveHere(getX() + 1, getY()) == false)
 				break;
 			else if (getX() + 1 <= 60)
 				moveTo(getX() + 1, getY());
@@ -168,7 +168,7 @@ void FrackMan::doSomething()
 		case KEY_PRESS_UP:
 			if (getDirection() != up)
 				setDirection(up);
-			else if (getWorld()->canMoveHere(getX(), getY() + 1) == false)
+			else if (getWorld()->canFrackmanMoveHere(getX(), getY() + 1) == false)
 				break;
 			else if (getY() + 1 <= 60)
 				moveTo(getX(), getY() + 1);
@@ -178,7 +178,7 @@ void FrackMan::doSomething()
 		case KEY_PRESS_DOWN:
 			if (getDirection() != down)
 				setDirection(down);
-			else if (getWorld()->canMoveHere(getX(), getY() - 1) == false)
+			else if (getWorld()->canFrackmanMoveHere(getX(), getY() - 1) == false)
 				break;
 			else if (getY() - 1 >= 0)
 				moveTo(getX(), getY() - 1);
@@ -227,12 +227,14 @@ void FrackMan::getAnnoyed(char cause)
 		setDead();
 		return;
 	}
-
-	reduceHP(2);
-	if (getHP() <= 0)
+	else
 	{
-		setDead();
-		GameController::getInstance().playSound(SOUND_PLAYER_GIVE_UP);
+		reduceHP(2);
+		if (getHP() <= 0)
+		{
+			GameController::getInstance().playSound(SOUND_PLAYER_GIVE_UP);
+			setDead();
+		}
 	}
 }
 
@@ -526,7 +528,7 @@ void WaterPool::doSomething()
 	if (!isStillAlive())
 		return;
 
-	if (getWorld()->isWithinRadius(getX(), getY(), getFracker()->getX(), getFracker()->getY(), 3.0))
+	if (getWorld()->isCollidingWith(getX(), getY(), getFracker()))
 	{
 		setDead();
 		GameController::getInstance().playSound(SOUND_GOT_GOODIE);
@@ -756,8 +758,7 @@ bool Protester::normalMove1()
 	else if (getWorld()->isWithinShoutingDistance(getX(), getY()) && getWorld()->isFacingFrackMan(getX(), getY(), getDirection()) && getHasShouted() == false)
 	{
 		shout();
-		setTickCounter();
-		setTickCounter(15 * getTickCounter());
+		setTickCounter(45);
 		return true;
 	}
 	else
@@ -806,7 +807,7 @@ void Protester::normalMove2()
 			}
 		}
 
-		if (getWorld()->canStepHere(getX(), getY(), getDirection()))
+		if (getWorld()->canProtestersStepHere(getX(), getY(), getDirection()))
 			takeStep(getDirection());
 		else
 			setNumSquaresToMove(0);
@@ -821,7 +822,7 @@ GraphObject::Direction Protester::getViableDirection()
 	Direction dir;
 	dir = getWorld()->getRandDir();
 
-	while (!getWorld()->canStepHere(getX(), getY(), dir))
+	while (!getWorld()->canProtestersStepHere(getX(), getY(), dir))
 	{
 		dir = getWorld()->getRandDir();
 	}
@@ -883,10 +884,6 @@ void HardcoreProtester::doSomething()
 		int tempY = getY();
 		dir = getWorld()->getIntimateWithFrack(tempX, tempY);
 
-		// if he is <= M legal steps away from Frackman
-		// determine which direction to face to get closer to frackman
-		// setDirection(this dir)
-		// takeStep(getDirection());
 		if (!getWorld()->isWithinShoutingDistance(getX(), getY()) && dir != none) 
 		{
 			setDirection(dir);
